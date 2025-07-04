@@ -1,0 +1,4 @@
+__pycache__/
+last_seen.json
+*.log
+.env
