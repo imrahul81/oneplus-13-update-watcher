@@ -6,6 +6,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 import smtplib
 from dotenv import load_dotenv
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 # Load environment variables
@@ -37,8 +38,15 @@ def save_last_seen(post):
         json.dump(post, f)
 
 # Send email alert
-def send_email(subject, body):
-    msg = MIMEText(body)
+def send_email(subject, body, html_body=None):
+    if html_body:
+        msg = MIMEMultipart("alternative")
+        part1 = MIMEText(body, "plain")
+        part2 = MIMEText(html_body, "html")
+        msg.attach(part1)
+        msg.attach(part2)
+    else:
+        msg = MIMEText(body, "plain")
     msg["Subject"] = subject
     msg["From"] = YOUR_EMAIL
     msg["To"] = TO_EMAIL
@@ -84,9 +92,56 @@ def main():
 
     if not last_seen or latest["link"] != last_seen.get("link"):
         print(f"🚨 New post detected:\n{latest['title']}\n{latest['link']}")
+        html_body = f"""
+        <html>
+        <head>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    background: #f9f9f9;
+                    color: #222;
+                    padding: 20px;
+                }}
+                .container {{
+                    background: #fff;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+                    padding: 24px;
+                    max-width: 600px;
+                    margin: auto;
+                }}
+                h2 {{
+                    color: #d32f2f;
+                }}
+                a.button {{
+                    display: inline-block;
+                    padding: 10px 18px;
+                    background: #1976d2;
+                    color: #fff !important;
+                    border-radius: 4px;
+                    text-decoration: none;
+                    margin-top: 16px;
+                }}
+                .meta {{
+                    color: #555;
+                    font-size: 0.95em;
+                    margin-bottom: 16px;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h2>🚨 New OnePlus 13 Update</h2>
+                <div class="meta"><strong>Title:</strong> {latest['title']}</div>
+                <a href="{latest['link']}" class="button">Read the post</a>
+            </div>
+        </body>
+        </html>
+        """
         send_email(
             subject=f"[OnePlus 13 Update] {latest['title']}",
-            body=f"A new update was posted by Winkey W.:\n\n{latest['title']}\n\n{latest['link']}"
+            body=f"A new update was posted by Winkey W.:\n\n{latest['title']}\n\n{latest['link']}",
+            html_body=html_body
         )
         save_last_seen(latest)
     else:
@@ -105,4 +160,4 @@ if __name__ == "__main__":
 # pip install selenium
 # Also, ensure you have the Chrome WebDriver installed and available in your PATH.
 # You can set up a cron job to run this script periodically, e.g., every hour:
-# 0 * * * * /usr/bin/python3 /path/to/fetch_updates.py  
+# 0 * * * * /usr/bin/python3 /path/to/fetch_updates.py
